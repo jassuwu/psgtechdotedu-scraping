@@ -1,0 +1,1 @@
+STOP_URLS = {'#', 'javascript:void(0);', 'https://psgtech.edu', 'http://www.psgtech.edu', 'https://www.psgtech.edu/'}
