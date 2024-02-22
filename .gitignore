@@ -1,2 +1,9 @@
+# Python stuff
 /venv
 **/__pycache__
+
+# Scrapy output
+psgtech.json
+
+# Calculated TDMATRIX in a csv
+td_matrix.csv

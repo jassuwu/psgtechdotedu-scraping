@@ -1,47 +1,17 @@
-# import json
-# import scrapy
-# from pathlib import Path
-
-# from .constants import STOP_URLS
-
-# class PsgtechSpider(scrapy.Spider):
-#     name = "psgtech"
-#     allowed_domains = ["psgtech.edu"]
-#     start_urls = ["https://psgtech.edu"]
-#     prev_url_set = set()
-#     prev_joint_url_set = set()
-
-#     def parse(self, response):
-
-#         # Parse the URLS
-#         urls = response.css("a::attr(href)").getall()
-
-#         # Remove the stop urls
-#         urls = self.get_next_urls(response, urls)
-
-#         # Stringify and dump
-#         json_dump = json.dumps(urls)
-#         Path('homepage.json').write_text(json_dump)
-        
-#         self.log(f"Saved the file.")
-
-#     def get_next_urls(self, response, url_list):
-#         processed_url_list = []
-#         for url in url_list:
-#             joint_url = response.urljoin(url)
-#             if url not in STOP_URLS and url not in self.prev_url_set and joint_url not in self.prev_joint_url_set:
-#                 self.prev_url_set.add(url)
-#                 self.prev_joint_url_set.add(joint_url)
-#                 processed_url_list.append(joint_url)
-#         return processed_url_list
-
+import re
+from nltk import word_tokenize
+from nltk.stem import PorterStemmer
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
+from urllib.parse import urlparse
+
+from .constants import STOP_WORDS
 
 class PsgtechSpider(CrawlSpider):
     name = 'psgtech'
     allowed_domains = ['psgtech.edu']
     start_urls = ['https://psgtech.edu']
+    stemmer = PorterStemmer()
 
     # Define the rules for the spider
     rules = (
@@ -49,19 +19,27 @@ class PsgtechSpider(CrawlSpider):
     )
 
     def parse_item(self, response):
-        # Extract the URL of the current page
         page_url = response.url
-
-        # Extract the title of the current page
         page_title = response.css('title::text').get()
+        page_text = ' '.join(response.css('p::text, h1::text, h2::text, h3::text, h4::text, h5::text, h6::text, li::text, a::text, div::text').getall())
 
-        # Extract all text within <p>, <h1>, <h2>, <h3>, <h4>, <h5>, <h6>, <li>, <a>, and <div> tags
-        # Might have to remove the <a> from here, it affects the results
-        page_text = ' '.join(response.css('p::text, h1::text, h2::text, h3::text, h4::text, h5::text, h6::text, li::text, div::text').getall())
+        punctuation_removed_title = re.sub(r'[^\w\s]', '', page_title)
+        clean_title = re.sub(r'\s+',' ',punctuation_removed_title.strip())
+        processed_title = [self.stemmer.stem(token.lower()) for token in word_tokenize(clean_title) if token.lower() not in STOP_WORDS]
 
-        # Return the data as an item
+        punctuation_removed_text = re.sub(r'[^\w\s]', '', page_text)
+        clean_text = re.sub(r'\s+',' ',punctuation_removed_text.strip())
+        processed_text = [self.stemmer.stem(token.lower()) for token in word_tokenize(clean_text) if token.lower() not in STOP_WORDS]
+
+        parsed_url = urlparse(page_url)
+        url_parts = re.split(r'[/.\-_]', parsed_url.netloc + parsed_url.path)
+        processed_url = [self.stemmer.stem(part.lower()) for part in url_parts if part and part.lower() not in STOP_WORDS]
+
+        processed_text += processed_title
+        processed_text += processed_url
+
         yield {
             'url': page_url,
-            'title': page_title,
-            'text': page_text,
+            'title': processed_title,
+            'text': processed_text,
         }
