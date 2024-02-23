@@ -14,3 +14,5 @@ if [ ! -f psgtechdotedu/data/psgtech.json ]; then
   scrapy crawl psgtech -O data/psgtech.json
 fi
 
+cd psgtechdotedu
+mkdir data

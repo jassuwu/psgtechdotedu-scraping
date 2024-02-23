@@ -11,7 +11,6 @@ app = FastAPI()
 class Result(BaseModel):
     url: str
     title: str
-    cosineSimilarity: float
 
 @app.get("/", status_code=200)
 def index():
@@ -29,7 +28,7 @@ async def get_query_results(q: str = Query(..., min_length=1, description="the s
     """Return a list of relevant documents for the given query."""
     try:
         full_vector = process_query(q, df.index)
-        results = find_top_n_relevant_docs(full_vector, df, docsDF, 10)
+        results = find_top_n_relevant_docs(full_vector, df, docsDF, 50)
         return results
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
