@@ -19,7 +19,7 @@ class PsgtechSpider(CrawlSpider):
     )
 
     def parse_item(self, response):
-        page_url = response.url
+        page_url = re.sub(r'^www\.', '', response.url)
         page_title = response.css('title::text').get()
         page_text = ' '.join(response.css('p::text, h1::text, h2::text, h3::text, h4::text, h5::text, h6::text, li::text, a::text, div::text').getall())
 
@@ -40,6 +40,6 @@ class PsgtechSpider(CrawlSpider):
 
         yield {
             'url': page_url,
-            'title': processed_title,
+            'title': page_title,
             'text': processed_text,
         }
