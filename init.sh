@@ -7,12 +7,13 @@ pip install -r requirements.txt
 # Download the nltk data
 python -c "import nltk; nltk.download('punkt')"
 
+cd psgtechdotedu
+mkdir data
+cd ..
+
 # Run the scraper if the JSON file does not exist
 if [ ! -f psgtechdotedu/data/psgtech.json ]; then
   # Change directory to psgtechdotedu
   cd psgtechdotedu
   scrapy crawl psgtech -O data/psgtech.json
 fi
-
-cd psgtechdotedu
-mkdir data
