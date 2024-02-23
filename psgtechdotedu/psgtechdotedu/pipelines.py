@@ -34,5 +34,5 @@ class TfidfPipeline(object):
         df = df.sort_index(axis=1)
 
         # Write the DataFrame to a CSV file
-        df.to_csv('td_matrix.csv')
+        df.to_csv('../data/td_matrix.csv')
 
