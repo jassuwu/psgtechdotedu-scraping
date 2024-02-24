@@ -4,6 +4,9 @@ from typing import List
 
 from utils import load_data, process_query, find_top_n_relevant_docs
 
+import nltk
+nltk.download('punkt')
+
 df, docsDF = load_data()
 
 app = FastAPI()
