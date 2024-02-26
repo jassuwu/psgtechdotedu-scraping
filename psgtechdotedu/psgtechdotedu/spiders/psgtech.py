@@ -12,6 +12,7 @@ class PsgtechSpider(CrawlSpider):
     allowed_domains = ['psgtech.edu']
     start_urls = ['https://psgtech.edu']
     stemmer = PorterStemmer()
+    visited_urls = set()
 
     # Define the rules for the spider
     rules = (
@@ -19,7 +20,11 @@ class PsgtechSpider(CrawlSpider):
     )
 
     def parse_item(self, response):
-        page_url = re.sub(r'^www\.', '', response.url)
+        page_url = re.sub(r'^https://www\.', 'https://', response.url)
+        if page_url in self.visited_urls:
+            return
+        self.visited_urls.add(page_url)
+
         page_title = response.css('title::text').get()
         page_text = ' '.join(response.css('p::text, h1::text, h2::text, h3::text, h4::text, h5::text, h6::text, li::text, a::text, div::text').getall())
 
