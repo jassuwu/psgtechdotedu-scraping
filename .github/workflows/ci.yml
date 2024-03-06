@@ -2,7 +2,8 @@ name: Redeploy to Render
 
 on:
   schedule:
-    - cron: "0 0 * * *" # This line schedules the workflow to run every day at midnight
+    - cron: "30 18 * * *" # This line schedules the workflow to run every day at midnight IST (UTC+5:30)
+
   workflow_dispatch: # This line allows the workflow to be manually triggered
 
 jobs:
