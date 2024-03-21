@@ -35,9 +35,3 @@ async def get_query_results(q: str = Query(..., min_length=1, description="the s
         return results
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@app.get("/pagerank", status_code=200)
-def pagerankfile():
-    """Return the pagerank dataframe"""
-    print(pagerank)
-    return pagerank
