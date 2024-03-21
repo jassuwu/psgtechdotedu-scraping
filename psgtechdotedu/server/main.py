@@ -7,7 +7,7 @@ from utils import load_data, process_query, find_top_n_relevant_docs
 import nltk
 nltk.download('punkt')
 
-df, docsDF = load_data()
+df, docsDF, pagerank = load_data()
 
 app = FastAPI()
 
@@ -31,7 +31,13 @@ async def get_query_results(q: str = Query(..., min_length=1, description="the s
     """Return a list of relevant documents for the given query."""
     try:
         full_vector = process_query(q, df.index)
-        results = find_top_n_relevant_docs(full_vector, df, docsDF, 50)
+        results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50)
         return results
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@app.get("/pagerank", status_code=200)
+def pagerankfile():
+    """Return the pagerank dataframe"""
+    print(pagerank)
+    return pagerank

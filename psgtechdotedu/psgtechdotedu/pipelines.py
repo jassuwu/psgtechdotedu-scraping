@@ -12,11 +12,14 @@ class TfidfPipeline(object):
     def __init__(self):
         self.documents = []
         self.urls = []
+        self.links = []  # Use a list to store the links
 
     def process_item(self, item, spider):
         joint_document = ' '.join(item['text'])
         self.documents.append(joint_document)
         self.urls.append(item['url'])
+        for link in item['links']:  # Add each link to the list
+            self.links.append((item['url'], link))
         item['text'] = joint_document
         return item
 
@@ -28,3 +31,6 @@ class TfidfPipeline(object):
         df = df.sort_index(axis=1)
         df.to_csv('data/td_matrix.csv')
 
+        # Save the links to a separate CSV file
+        links_df = pd.DataFrame(self.links, columns=['from', 'to'])
+        links_df.to_csv('data/links.csv')

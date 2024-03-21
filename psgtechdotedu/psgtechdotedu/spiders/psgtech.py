@@ -43,8 +43,11 @@ class PsgtechSpider(CrawlSpider):
         processed_text += processed_title
         processed_text += processed_url
 
+        links = set([re.sub(r'^https://www\.', 'https://', link.url) for link in LinkExtractor().extract_links(response)])
+
         yield {
             'url': page_url,
             'title': page_title,
             'text': processed_text,
+            'links': links
         }
