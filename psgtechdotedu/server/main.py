@@ -14,6 +14,9 @@ app = FastAPI()
 class Result(BaseModel):
     url: str
     title: str
+    cos_sim_score: float
+    pagerank_score: float
+    alpha: float
 
 @app.get("/", status_code=200)
 def index():

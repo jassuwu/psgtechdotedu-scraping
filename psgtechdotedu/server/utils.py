@@ -36,13 +36,18 @@ def process_query(query, columns):
 
 def find_top_n_relevant_docs(query_weights, tdMatrixDF, docsDF, pagerank, N, alpha=0.7):
     cosine_similarity_scores = cosine_similarity(query_weights.reshape(1, -1), tdMatrixDF.T.values)
-    scores = alpha * cosine_similarity_scores.flatten() + (1-alpha) * np.array([pagerank[url] if url in pagerank else 0 for url in tdMatrixDF.columns])
-    df = pd.DataFrame({'docID': tdMatrixDF.columns, 'score': scores})
+    pagerank_scores = np.array([pagerank[url] if url in pagerank else 0 for url in tdMatrixDF.columns])
+    scores = alpha * cosine_similarity_scores.flatten() + (1-alpha) * pagerank_scores
+    df = pd.DataFrame({'docID': tdMatrixDF.columns, 'cos_sim_score': cosine_similarity_scores.flatten(), 'pagerank_score': pagerank_scores, 'score': scores})
     sorted_df = df.sort_values(by='score', ascending=False)
     results = docsDF.loc[sorted_df['docID'].values[:N].tolist()][['title']].reset_index()
     results['last_segment'] = results['url'].apply(extract_url_segments_to_title)
     results['title'] = results.apply(lambda row: f"{row['last_segment']} | {row['title']}" if row['last_segment'] else row['title'], axis=1)
-    return results[['url', 'title']].to_dict(orient='records')
+    results['cos_sim_score'] = sorted_df['cos_sim_score'].values[:N]
+    results['pagerank_score'] = sorted_df['pagerank_score'].values[:N]
+    results['alpha'] = alpha
+    return results[['url', 'title', 'cos_sim_score', 'pagerank_score', 'alpha']].to_dict(orient='records')
+
 
 def extract_url_segments_to_title(url):
     parsed = urlparse(url)
