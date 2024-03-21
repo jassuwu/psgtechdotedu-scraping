@@ -34,9 +34,9 @@ def process_query(query, columns):
     full_vector = [qf[col][0] if col in vectorizer.get_feature_names_out() else 0 for col in columns]
     return np.array(full_vector)
 
-def find_top_n_relevant_docs(query_weights, tdMatrixDF, docsDF, pagerank, N, alpha=0.7):
+def find_top_n_relevant_docs(query_weights, tdMatrixDF, docsDF, pagerank, N):
     cosine_similarity_scores = cosine_similarity(query_weights.reshape(1, -1), tdMatrixDF.T.values)
-    scores = alpha * cosine_similarity_scores.flatten() + (1-alpha) * np.array([pagerank[url] if url in pagerank else 0 for url in tdMatrixDF.columns])
+    scores = cosine_similarity_scores.flatten() * np.array([pagerank[url] if url in pagerank else 0 for url in tdMatrixDF.columns])
     df = pd.DataFrame({'docID': tdMatrixDF.columns, 'score': scores})
     sorted_df = df.sort_values(by='score', ascending=False)
     results = docsDF.loc[sorted_df['docID'].values[:N].tolist()][['title']].reset_index()
