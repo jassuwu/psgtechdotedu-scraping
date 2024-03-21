@@ -54,3 +54,26 @@ def extract_url_segments_to_title(url):
     last_segment = unquote(parsed.path.split('/')[-1])
     last_segment = ' '.join(word.capitalize() for word in re.split(r'[/.\-_]', last_segment) if word.lower() not in {'html', 'php'})
     return last_segment
+
+def grid_search(results, feedback):
+
+    def calculate_scores(alpha, cos_sim_scores, pagerank_scores):
+        return alpha * cos_sim_scores + (1 - alpha) * pagerank_scores
+
+    def calculate_loss(scores, feedback):
+         return np.sum((scores - feedback) ** 2)
+    
+    cos_sim_scores = np.array([r['cos_sim_score'] for r in results])
+    pagerank_scores = np.array([r['pagerank_score'] for r in results])
+    
+    best_alpha = None
+    best_loss = float('inf')
+
+    for alpha in np.linspace(0, 1, 1001):
+        scores = calculate_scores(alpha, cos_sim_scores, pagerank_scores)
+        loss = calculate_loss(scores, feedback)
+        if loss < best_loss:
+            best_alpha = alpha
+            best_loss = loss
+
+    return best_alpha

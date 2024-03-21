@@ -2,12 +2,14 @@ from fastapi import FastAPI, HTTPException, Query, status
 from pydantic import BaseModel
 from typing import List
 
-from utils import load_data, process_query, find_top_n_relevant_docs
+from utils import grid_search, load_data, process_query, find_top_n_relevant_docs
 
 import nltk
 nltk.download('punkt')
 
 df, docsDF, pagerank = load_data()
+
+alpha = 0.7
 
 app = FastAPI()
 
@@ -17,6 +19,10 @@ class Result(BaseModel):
     cos_sim_score: float
     pagerank_score: float
     alpha: float
+
+class Feedback(BaseModel):
+    query: str
+    feedback: int  # 1 for upvote, -1 for downvote
 
 @app.get("/", status_code=200)
 def index():
@@ -34,7 +40,22 @@ async def get_query_results(q: str = Query(..., min_length=1, description="the s
     """Return a list of relevant documents for the given query."""
     try:
         full_vector = process_query(q, df.index)
-        results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50)
+        results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50, alpha)
         return results
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@app.post("/feedback", status_code=200)
+async def receive_feedback(feedback_data: Feedback):
+    """Update the global alpha value with the user feedback and respond with success or failure."""    
+    global alpha
+
+    query = feedback_data.query
+    feedback = feedback_data.feedback
+    
+    full_vector = process_query(query, df.index)
+    results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50, alpha)
+
+    alpha = grid_search(results, feedback)
+
+    return {"message": f"Feedback received and alpha updated to {alpha}"}
