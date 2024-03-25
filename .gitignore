@@ -8,5 +8,8 @@ psgtech.json
 # Calculated TDMATRIX in a csv
 td_matrix.csv
 
+# The adjacency matrix storing the link information
+links.csv
+
 # Calculated Inverted Index in a json (discontinued)
 inverted_index.json

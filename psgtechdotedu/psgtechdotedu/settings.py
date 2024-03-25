@@ -56,6 +56,10 @@ ROBOTSTXT_OBEY = True
 #    "psgtechdotedu.middlewares.PsgtechdoteduDownloaderMiddleware": 543,
 #}
 
+DOWNLOADER_MIDDLEWARES = {
+    "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
+}
+
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
 #EXTENSIONS = {
