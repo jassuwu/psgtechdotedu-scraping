@@ -5,6 +5,8 @@
 
 
 # useful for handling different item types with a single interface
+import json
+from collections import defaultdict
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -13,6 +15,7 @@ class TfidfPipeline(object):
         self.documents = []
         self.urls = []
         self.links = []  # Use a list to store the links
+        self.inverted_index = defaultdict(list)
 
     def process_item(self, item, spider):
         joint_document = ' '.join(item['text'])
@@ -26,10 +29,16 @@ class TfidfPipeline(object):
     def close_spider(self, spider):
         vectorizer = TfidfVectorizer()
         td_matrix = vectorizer.fit_transform(self.documents)
+        feature_names = vectorizer.get_feature_names_out()
 
-        df = pd.DataFrame(td_matrix.T.toarray(), index=vectorizer.get_feature_names_out(), columns=self.urls)
-        df = df.sort_index(axis=1)
-        df.to_csv('data/td_matrix.csv')
+        # Build the inverted index with TF-IDF weights
+        for doc_id, doc in enumerate(td_matrix.toarray()):
+            for term_id, weight in enumerate(doc):
+                if weight > 0:
+                    self.inverted_index[feature_names[term_id]].append((self.urls[doc_id], weight))
+        # Save the inverted index to a file
+        with open('data/inverted_index.json', 'w') as f:
+            json.dump(self.inverted_index, f)
 
         # Save the links to a separate CSV file
         links_df = pd.DataFrame(self.links, columns=['from', 'to'])

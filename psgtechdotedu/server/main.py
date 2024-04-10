@@ -7,7 +7,7 @@ from utils import grid_search, load_data, process_query, find_top_n_relevant_doc
 import nltk
 nltk.download('punkt')
 
-df, docsDF, pagerank = load_data()
+inverted_index, docsDF, pagerank = load_data()
 
 alpha = 0.7
 
@@ -39,8 +39,8 @@ def health():
 async def get_query_results(q: str = Query(..., min_length=1, description="the search query")):
     """Return a list of relevant documents for the given query."""
     try:
-        full_vector = process_query(q, df.index)
-        results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50, alpha)
+        query_terms = process_query(q)
+        results = find_top_n_relevant_docs(query_terms, inverted_index, docsDF, pagerank, 50, alpha)
         return results
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -49,13 +49,9 @@ async def get_query_results(q: str = Query(..., min_length=1, description="the s
 async def receive_feedback(feedback_data: Feedback):
     """Update the global alpha value with the user feedback and respond with success or failure."""    
     global alpha
-
     query = feedback_data.query
     feedback = feedback_data.feedback
-    
-    full_vector = process_query(query, df.index)
-    results = find_top_n_relevant_docs(full_vector, df, docsDF, pagerank, 50, alpha)
-
+    query_terms = process_query(query)
+    results = find_top_n_relevant_docs(query_terms, inverted_index, docsDF, pagerank, 50, alpha)
     alpha = grid_search(results, feedback)
-
     return {"message": f"Feedback received and alpha updated to {alpha}"}
