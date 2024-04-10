@@ -1,3 +1,5 @@
+import json
+from collections import defaultdict
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -12,39 +14,57 @@ vectorizer = TfidfVectorizer()
 stemmer = PorterStemmer()
 
 def load_data():
-    df = pd.read_csv('../data/td_matrix.csv')
-    df.set_index(keys='Unnamed: 0', inplace=True)
+    with open('../data/inverted_index.json', 'r') as f:
+        inverted_index = json.load(f)
+
     docsDF = pd.read_json('../data/psgtech.json')
     docsDF.set_index(keys='url', inplace=True)
 
-    # Load the links data and create the graph
     links_df = pd.read_csv('../data/links.csv')
     G = nx.from_pandas_edgelist(links_df, 'from', 'to', create_using=nx.DiGraph())
     pagerank = nx.pagerank(G)
 
-    return df, docsDF, pagerank
+    return inverted_index, docsDF, pagerank
 
 
-def process_query(query, columns):
+def process_query(query):
     punctuation_removed_query = re.sub(r'[^\w\s]', '', query)
     clean_query = re.sub(r'\s+',' ',punctuation_removed_query.strip())
     processed_query = [stemmer.stem(token.lower()) for token in word_tokenize(clean_query)]
-    query_vector = vectorizer.fit_transform([' '.join(processed_query)])
-    qf = pd.DataFrame(query_vector.toarray(), columns=vectorizer.get_feature_names_out())
-    full_vector = [qf[col][0] if col in vectorizer.get_feature_names_out() else 0 for col in columns]
-    return np.array(full_vector)
+    return processed_query
 
-def find_top_n_relevant_docs(query_weights, tdMatrixDF, docsDF, pagerank, N, alpha=0.7):
-    cosine_similarity_scores = cosine_similarity(query_weights.reshape(1, -1), tdMatrixDF.T.values)
-    pagerank_scores = np.array([pagerank[url] if url in pagerank else 0 for url in tdMatrixDF.columns])
-    scores = alpha * cosine_similarity_scores.flatten() + (1-alpha) * pagerank_scores
-    df = pd.DataFrame({'docID': tdMatrixDF.columns, 'cos_sim_score': cosine_similarity_scores.flatten(), 'pagerank_score': pagerank_scores, 'score': scores})
-    sorted_df = df.sort_values(by='score', ascending=False)
+def find_top_n_relevant_docs(query_terms, inverted_index, docsDF, pagerank, N, alpha=0.7):
+    doc_vectors = defaultdict(list)
+
+    for term in query_terms:
+        if term in inverted_index:
+            for doc_id, weight in inverted_index[term]:
+                doc_vectors[doc_id].append(weight)
+
+    max_len = max(len(vec) for vec in doc_vectors.values())
+
+    for doc_id, vec in doc_vectors.items():
+        if len(vec) < max_len:
+            doc_vectors[doc_id] = vec + [0] * (max_len - len(vec))
+
+    doc_matrix = np.array([vec for vec in doc_vectors.values()])
+    query_vector = np.ones((1, len(query_terms)))
+    cosine_similarity_scores = cosine_similarity(query_vector, doc_matrix)
+
+    relevance_df = pd.DataFrame(list(doc_vectors.keys()), columns=['docID'])
+    relevance_df['cos_sim_score'] = cosine_similarity_scores.flatten()
+
+    pagerank_scores = np.array([pagerank[url] if url in pagerank else 0 for url in relevance_df['docID']])
+    scores = alpha * relevance_df['cos_sim_score'].values + (1-alpha) * pagerank_scores
+
+    relevance_df['score'] = scores
+    sorted_df = relevance_df.sort_values(by='score', ascending=False)
+
     results = docsDF.loc[sorted_df['docID'].values[:N].tolist()][['title']].reset_index()
     results['last_segment'] = results['url'].apply(extract_url_segments_to_title)
     results['title'] = results.apply(lambda row: f"{row['last_segment']} | {row['title']}" if row['last_segment'] else row['title'], axis=1)
     results['cos_sim_score'] = sorted_df['cos_sim_score'].values[:N]
-    results['pagerank_score'] = sorted_df['pagerank_score'].values[:N]
+    results['pagerank_score'] = pagerank_scores[:N]
     results['alpha'] = alpha
     return results[['url', 'title', 'cos_sim_score', 'pagerank_score', 'alpha']].to_dict(orient='records')
 
