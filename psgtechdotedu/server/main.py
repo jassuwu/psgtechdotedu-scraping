@@ -53,5 +53,5 @@ async def receive_feedback(feedback_data: Feedback):
     feedback = feedback_data.feedback
     query_terms = process_query(query)
     results = find_top_n_relevant_docs(query_terms, inverted_index, docsDF, pagerank, 50, alpha)
-    alpha = grid_search(results, feedback)
+    alpha = grid_search(results, feedback, alpha)
     return {"message": f"Feedback received and alpha updated to {alpha}"}

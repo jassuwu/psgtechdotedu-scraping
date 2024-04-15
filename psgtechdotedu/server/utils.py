@@ -35,20 +35,34 @@ def process_query(query):
 
 def find_top_n_relevant_docs(query_terms, inverted_index, docsDF, pagerank, N, alpha=0.7):
     doc_vectors = defaultdict(list)
+    query_vector = defaultdict(int)
 
     for term in query_terms:
         if term in inverted_index:
+            query_vector[term] += 1
             for doc_id, weight in inverted_index[term]:
                 doc_vectors[doc_id].append(weight)
+        else:
+            query_vector[term]
 
-    max_len = max(len(vec) for vec in doc_vectors.values())
+    # No matching documents, return top N documents based on PageRank
+    if not doc_vectors:
+        top_docs = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:N]
+        top_doc_urls = [doc[0] for doc in top_docs if doc[0] in docsDF.index]  
+        results = docsDF.loc[top_doc_urls][['title']].reset_index()
+        results['last_segment'] = results['url'].apply(extract_url_segments_to_title)
+        results['title'] = results.apply(lambda row: f"{row['last_segment']} | {row['title']}" if row['last_segment'] else row['title'], axis=1)
+        results['cos_sim_score'] = [0 for _ in range(len(top_doc_urls))]
+        results['pagerank_score'] = [pagerank[url] for url in top_doc_urls]
+        results['alpha'] = alpha
+        return results[['url', 'title', 'cos_sim_score', 'pagerank_score', 'alpha']].to_dict(orient='records')
 
     for doc_id, vec in doc_vectors.items():
-        if len(vec) < max_len:
-            doc_vectors[doc_id] = vec + [0] * (max_len - len(vec))
+        if len(vec) < len(query_vector):
+            doc_vectors[doc_id] = vec + [0] * (len(query_vector) - len(vec))
 
     doc_matrix = np.array([vec for vec in doc_vectors.values()])
-    query_vector = np.ones((1, len(query_terms)))
+    query_vector = np.array([list(query_vector.values())])
     cosine_similarity_scores = cosine_similarity(query_vector, doc_matrix)
 
     relevance_df = pd.DataFrame(list(doc_vectors.keys()), columns=['docID'])
@@ -75,7 +89,7 @@ def extract_url_segments_to_title(url):
     last_segment = ' '.join(word.capitalize() for word in re.split(r'[/.\-_]', last_segment) if word.lower() not in {'html', 'php'})
     return last_segment
 
-def grid_search(results, feedback):
+def grid_search(results, feedback, alpha, learning_rate=0.01):
 
     def calculate_scores(alpha, cos_sim_scores, pagerank_scores):
         return alpha * cos_sim_scores + (1 - alpha) * pagerank_scores
@@ -86,14 +100,24 @@ def grid_search(results, feedback):
     cos_sim_scores = np.array([r['cos_sim_score'] for r in results])
     pagerank_scores = np.array([r['pagerank_score'] for r in results])
     
-    best_alpha = None
-    best_loss = float('inf')
+    current_scores = calculate_scores(alpha, cos_sim_scores, pagerank_scores)
+    current_loss = calculate_loss(current_scores, feedback)
 
-    for alpha in np.linspace(0, 1, 1001):
-        scores = calculate_scores(alpha, cos_sim_scores, pagerank_scores)
-        loss = calculate_loss(scores, feedback)
-        if loss < best_loss:
-            best_alpha = alpha
-            best_loss = loss
+    increased_scores = calculate_scores(alpha + learning_rate, cos_sim_scores, pagerank_scores)
+    increased_loss = calculate_loss(increased_scores, feedback)
 
-    return best_alpha
+    if increased_loss < current_loss:  
+        if alpha < 0.5:  
+            alpha += learning_rate  
+        elif alpha > 0.5:  
+            alpha -= learning_rate  
+        
+    else:  
+        if alpha <= 0.5:  
+            alpha -= learning_rate  
+        else:  
+            alpha += learning_rate  
+
+    alpha = max(0, min(1, alpha))  
+
+    return alpha
