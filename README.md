@@ -1,6 +1,12 @@
-Please note that this is the Backend and scraper repository. For information about the frontend, please refer to the [corresponding repository](https://github.com/jassuwu/search-psgtech).
+# Deprecated in favor of the new backend.
 
-# PSGoogle: An Institutional Search Engine
+# Links
+
+- [psgoogle - repo with the docker-compose that is used to deploy everything together](https://github.com/jassuwu/psgoogle)
+- [search-psgtech - the webfacing nextjs app](https://github.com/jassuwu/search-psgtech)
+- [scrape-psgtech - the scraper, indexer, and server](https://github.com/jassuwu/scrape-psgtech)
+
+# PSGoogle
 
 ## Overview
 
